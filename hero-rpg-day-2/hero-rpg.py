@@ -1,158 +1,136 @@
 #!/usr/bin/env python3
 
 """
-Added a store. The hero can now buy a tonic or a sword. A tonic will add 2 to the hero's health wherease a sword will add 2 power.
+In this simple RPG game, the hero fights the goblin. He has the options to:
+1. fight goblin
+2. do nothing - in which case the goblin will attack him anyway
+3. flee
 """
+from characters import *
+from items import *
+from random import randint
+from time import sleep
 
-import random
-import time
 
-class Character(object):
+
+class Menu():
+    coins = 0
+    health = 10
     def __init__(self):
-        self.name = '<undefined>'
-        self.health = 10
-        self.power = 5
-        self.coins = 20
+        pass
+    def begin_battle(self, battle):
+        #battlemenucoins = menucoins
+        hero = Hero(self.health)
+        ENEMYLIST = [Zombie(), Goblin(), Medic(), Lion(), Shadow()]
+        enemy = ENEMYLIST[randint(0, len(ENEMYLIST)-1)]
+        print("Beginning battle...")
+        return battle.start_combat(hero, enemy, self)#, battlemenucoins)
+    def enter_store(self):
+        store.open_store(self)
+    def in_menu(self, inventory, battle, store):
+        print("""\nYou have the following options:
+        1. Venture forth into the fields. You have {} health.
+        2. Enter the store. You have {} gold coins.
+        3. Quit Hero RPG.
+        """.format(self.health, self.coins))
+        inpt = input("What would you like to do? > ")
+        if inpt == '1':
+            winnings = self.begin_battle(battle)
 
-    def alive(self):
-        return self.health > 0
+            import traceback
+            if type(winnings) == int:
+                self.coins += int(winnings)
 
-    def attack(self, enemy):
-        if not self.alive():
-            return
-        print("{} attacks {}".format(self.name, enemy.name))
-        enemy.receive_damage(self.power)
-        time.sleep(1.5)
+            # except ValueError:
+            #     traceback.print_exc()
+            #
+            # except TypeError:
+            #     traceback.print_exc()
 
-    def receive_damage(self, points):
-        self.health -= points
-        print("{} received {} damage.".format(self.name, points))
-        if self.health <= 0:
-            print("{} is dead.".format(self.name))
+        elif inpt == '2':
+            self.enter_store()
 
-    def print_status(self):
-        print("{} has {} health and {} power.".format(self.name, self.health, self.power))
+        elif inpt == '3':
+            print ('Bye!')
+            quit()
 
-class Hero(Character):
+
+class Store():
     def __init__(self):
-        self.name = 'hero'
-        self.health = 10
-        self.power = 5
-        self.coins = 20
+        pass
+    inv = [] # list of items
+    def open_store(self, menu):
+        for item in items:
+            self.inv.append(item)
+        print("Welcome to the store! You have {} coins to spend.".format(menu.coins))
+        print("These are the items we have available:")
+        for i in range(len(storeinv)):
+            if item.count > 0:
+                print("{}. {} | Effect: {} | Cost: {}".format(i, item.name, item.effect, item.cost))
 
-    def restore(self):
-        self.health = 10
-        print("Hero's heath is restored to {}!".format(self.health))
-        time.sleep(1)
-
-    def buy(self, item):
-        self.coins -= item.cost
-        item.apply(hero)
-
-class Goblin(Character):
-    def __init__(self):
-        self.name = 'goblin'
-        self.health = 6
-        self.power = 2
-
-class Wizard(Character):
-    def __init__(self):
-        self.name = 'wizard'
-        self.health = 8
-        self.power = 1
-
-    def attack(self, enemy):
-        swap_power = random.random() > 0.5
-        if swap_power:
-            print("{} swaps power with {} during attack".format(self.name, enemy.name))
-            self.power, enemy.power = enemy.power, self.power
-        super(Wizard, self).attack(enemy)
-        if swap_power:
-            self.power, enemy.power = enemy.power, self.power
-
-class Battle(object):
-    def do_battle(self, hero, enemy):
-        print("=====================")
-        print("Hero faces the {}".format(enemy.name))
-        print("=====================")
-        while hero.alive() and enemy.alive():
+class Combat():
+    def start_combat(self, hero, enemy, menu):#, coins):
+        print("\nA {} draws near.".format(enemy.name))
+        while enemy.alive() and hero.alive():
             hero.print_status()
             enemy.print_status()
-            time.sleep(1.5)
-            print("-----------------------")
+
+            print()
             print("What do you want to do?")
             print("1. fight {}".format(enemy.name))
             print("2. do nothing")
             print("3. flee")
             print("> ", end=' ')
-            input = int(input())
-            if input == 1:
-                hero.attack(enemy)
-            elif input == 2:
+            inpt = input()
+            if inpt == "1":
+                if enemy.interrupt(hero) == True:  # if enemy interrupt passes
+                    pass # attack does not happen
+                else:
+                    hero.attack(enemy)
+            elif inpt == "2": # do nothing
                 pass
-            elif input == 3:
-                print("Goodbye.")
-                exit(0)
+            elif inpt == "3":
+                print("You managed to escape!")
+                return False
             else:
-                print("Invalid input {}".format(input))
-                continue
-            enemy.attack(hero)
-        if hero.alive():
-            print("You defeated the {}".format(enemy.name))
-            return True
-        else:
-            print("YOU LOSE!")
-            return False
+                print("Invalid inpt {}".format(inpt))
 
-class Tonic(object):
-    cost = 5
-    name = 'tonic'
-    def apply(self, character):
-        character.health += 2
-        print("{}'s health increased to {}.".format(character.name, character.health))
-
-class Sword(object):
-    cost = 10
-    name = 'sword'
-    def apply(self, hero):
-        hero.power += 2
-        print("{}'s power increased to {}.".format(hero.name, hero.power))
-
-class Store(object):
-    # If you define a variable in the scope of a class:
-    # This is a class variable and you can access it like
-    # Store.items => [Tonic, Sword]
-    items = [Tonic, Sword]
-    def do_shopping(self, hero):
-        while True:
-            print("=====================")
-            print("Welcome to the store!")
-            print("=====================")
-            print("You have {} coins.".format(hero.coins))
-            print("What do you want to do?")
-            for i in range(len(Store.items)):
-                item = Store.items[i]
-                print("{}. buy {} ({})".format(i + 1, item.name, item.cost))
-            print("10. leave")
-            input = int(input("> "))
-            if input == 10:
-                break
+            if enemy.alive():
+                enemy.attack(hero)
+                enemy.special(hero)
             else:
-                ItemToBuy = Store.items[input - 1]
-                item = ItemToBuy()
-                hero.buy(item)
+                print("You have defeated the {}.".format(enemy.name))
+                print("You have earned {} gold coins.".format(enemy.bounty))
+                coins = enemy.bounty
+                menu.health = hero.health
+                return coins
+
+            if not hero.alive():
+                print("\n...\n...\nYou are dead.\n...\n...")
+                quit(0)
+
+def main():
+
+#    coins = 0
+    inventory = []
+
+    menu = Menu()
+    battle = Combat()
+    store = Store()
+
+    print("\n\n\nWelcome to HERO RPG!")
+    #print('Menu.coins before while loop is ',menu.coins)
+    while 1:
+        winnings = menu.in_menu(inventory, battle, store)
+        #print('Menu.coins in while loop is ',menu.coins)
+        #try:
+        #    int(winnings)
+        #    coins += winnings
+        #except TypeError:
+        #    pass
+        #except ValueError:
+        #    pass
+
 
 if __name__ == "__main__":
-    hero = Hero()
-    enemies = [Goblin(), Wizard()]
-    battle_engine = Battle()
-    shopping_engine = Store()
-
-    for enemy in enemies:
-        hero_won = battle_engine.do_battle(hero, enemy)
-        if not hero_won:
-            print("YOU LOSE!")
-            exit(0)
-        shopping_engine.do_shopping(hero)
-
-    print("YOU WIN!")
+    main()
